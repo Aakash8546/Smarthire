@@ -1,20 +1,23 @@
 package com.smarthire.dto;
 
+import lombok.Data;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import jakarta.validation.constraints.Size;
 
 @Data
 public class SignupRequest {
-    @NotBlank
-    @Email
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, max = 40, message = "Password must be between 6 and 40 characters")
     private String password;
 
-    @NotBlank
+    @NotBlank(message = "Name is required")
     private String name;
 
-    private String role = "USER";
+    @NotBlank(message = "User type is required")
+    private String userType;
 }

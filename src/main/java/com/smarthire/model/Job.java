@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @Entity
 @Table(name = "jobs")
@@ -15,28 +18,50 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Job {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)  // ✅ Changed
-    private Long id;  // ✅ String → Long
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String description;
+
     @Column(nullable = false)
     private String company;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Column(columnDefinition = "TEXT")
-    private String requirements;
-
-    @Column(columnDefinition = "TEXT")
-    private String skills;
-
     private String location;
 
-    private String salary;
+    @Column(name = "required_skills", columnDefinition = "TEXT")
+    private String requiredSkills;
+
+    @Column(name = "experience_years")
+    private Integer experienceYears;
+
+    @Column(name = "salary_range")
+    private String salaryRange;
+
+    @ManyToOne
+    @JoinColumn(name = "recruiter_id")
+    private User recruiter;
+
+    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Application> applications = new ArrayList<>();
+
+    @Column(name = "is_active")
+    private boolean isActive = true;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    public List<String> getRequiredSkillsList() {
+        if (requiredSkills != null && !requiredSkills.isEmpty()) {
+            return Arrays.asList(requiredSkills.split(","));
+        }
+        return new ArrayList<>();
+    }
+
+    public void setRequiredSkillsList(List<String> skills) {
+        this.requiredSkills = String.join(",", skills);
+    }
 }

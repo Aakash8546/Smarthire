@@ -5,9 +5,10 @@ import java.util.List;
 
 @Data
 public class ResumeAnalysisResponse {
-    private Long resumeId;  // ✅ String → Long
-    private List<String> skills;
+    private Long resumeId;
     private Integer score;
-    private String suggestions;
-    private List<String> improvementAreas;
+    private List<String> extractedSkills;
+    private List<String> suggestions;
+    private String analysisDate;
+    private String message;
 }

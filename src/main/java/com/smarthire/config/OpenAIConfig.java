@@ -6,12 +6,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-public class GeminiConfig {
+public class OpenAIConfig {
 
-    @Value("${gemini.api.key}")
+    @Value("${ai.service.api-key}")
     private String apiKey;
 
-    @Value("${gemini.api.url}")
+    @Value("${ai.service.url}")
     private String apiUrl;
 
     @Bean

@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class SmarthireApplication {
     public static void main(String[] args) {
         SpringApplication.run(SmarthireApplication.class, args);
-        System.out.println("🚀 SmartHire Application Started Successfully!");
+        System.out.println("SmartHire Application Started Successfully!");
+        System.out.println("Server running on http://localhost:8080");
     }
 }

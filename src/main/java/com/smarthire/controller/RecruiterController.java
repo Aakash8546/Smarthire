@@ -1,97 +1,169 @@
 package com.smarthire.controller;
 
+import com.smarthire.model.Application;
 import com.smarthire.model.Job;
-import com.smarthire.model.User;
+import com.smarthire.repository.ApplicationRepository;
 import com.smarthire.repository.JobRepository;
-import com.smarthire.repository.ResumeRepository;
 import com.smarthire.repository.UserRepository;
-import com.smarthire.service.JobMatchingService;
-import com.smarthire.util.JwtUtil;
-import lombok.RequiredArgsConstructor;
+import com.smarthire.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/recruiter")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class RecruiterController {
 
-    private final UserRepository userRepository;
-    private final ResumeRepository resumeRepository;
-    private final JobRepository jobRepository;
-    private final JobMatchingService matchingService;
-    private final JwtUtil jwtUtil;
+    @Autowired
+    private ApplicationRepository applicationRepository;
 
-    @PostMapping("/jobs")
-    public ResponseEntity<?> createJob(
-            @RequestBody Job job,
-            @RequestHeader("Authorization") String authHeader) {
+    @Autowired
+    private JobRepository jobRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
+
+    @GetMapping("/applications")
+    public ResponseEntity<?> getApplications(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            String token = authHeader.substring(7);
-            User recruiter = jwtUtil.getUserFromToken(token);
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
 
-            if (!"RECRUITER".equals(recruiter.getRole())) {
-                return ResponseEntity.status(403).body(Map.of("error", "Only recruiters can post jobs"));
-            }
+            List<Application> applications = applicationRepository
+                    .findByJobRecruiterOrderByMatchPercentageDesc(recruiter);
 
-            Job savedJob = jobRepository.save(job);
-            return ResponseEntity.ok(savedJob);
+            return ResponseEntity.ok(applications);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 
-    @GetMapping("/candidates")
-    public ResponseEntity<?> getCandidatesSortedByMatch(
-            @RequestParam String jobId,
-            @RequestParam(required = false) String skill,
-            @RequestHeader("Authorization") String authHeader) {
+    @GetMapping("/applications/skill/{skill}")
+    public ResponseEntity<?> filterBySkill(@AuthenticationPrincipal UserDetails userDetails,
+                                           @PathVariable String skill) {
         try {
-            String token = authHeader.substring(7);
-            User recruiter = jwtUtil.getUserFromToken(token);
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
 
-            if (!"RECRUITER".equals(recruiter.getRole())) {
-                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
-            }
+            List<Application> applications = applicationRepository
+                    .findByJobRecruiterOrderByMatchPercentageDesc(recruiter);
 
-            Job job = jobRepository.findById(jobId)
-                    .orElseThrow(() -> new RuntimeException("Job not found"));
+            List<Application> filtered = applications.stream()
+                    .filter(app -> app.getMissingSkills() != null &&
+                            app.getMissingSkills().toLowerCase().contains(skill.toLowerCase()))
+                    .collect(Collectors.toList());
 
-            List<User> allUsers = userRepository.findAll();
-            List<Map<String, Object>> candidates = new ArrayList<>();
-
-            for (User user : allUsers) {
-                if ("USER".equals(user.getRole())) {
-                    Optional<com.smarthire.model.Resume> resumeOpt = resumeRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId());
-
-                    if (resumeOpt.isPresent()) {
-                        var matchResult = matchingService.matchResumeWithJob(resumeOpt.get(), job);
-
-                        Map<String, Object> candidate = new HashMap<>();
-                        candidate.put("userId", user.getId());
-                        candidate.put("name", user.getName());
-                        candidate.put("email", user.getEmail());
-                        candidate.put("matchPercentage", matchResult.getMatchPercentage());
-                        candidate.put("matchedSkills", matchResult.getMatchedSkills());
-                        candidate.put("missingSkills", matchResult.getMissingSkills());
-
-                        if (skill == null || skill.isEmpty() ||
-                                matchResult.getMatchedSkills().stream().anyMatch(s -> s.toLowerCase().contains(skill.toLowerCase()))) {
-                            candidates.add(candidate);
-                        }
-                    }
-                }
-            }
-
-            candidates.sort((a, b) ->
-                    ((Integer) b.get("matchPercentage")).compareTo((Integer) a.get("matchPercentage")));
-
-            return ResponseEntity.ok(candidates);
+            return ResponseEntity.ok(filtered);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/applications/min-match/{percentage}")
+    public ResponseEntity<?> filterByMinMatchPercentage(@AuthenticationPrincipal UserDetails userDetails,
+                                                        @PathVariable int percentage) {
+        try {
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
+
+            List<Application> applications = applicationRepository
+                    .findByRecruiterAndMinMatchPercentage(recruiter, percentage);
+
+            return ResponseEntity.ok(applications);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @PutMapping("/applications/{applicationId}/status")
+    public ResponseEntity<?> updateApplicationStatus(@AuthenticationPrincipal UserDetails userDetails,
+                                                     @PathVariable Long applicationId,
+                                                     @RequestParam String status) {
+        try {
+            Application application = applicationRepository.findById(applicationId)
+                    .orElseThrow(() -> new RuntimeException("Application not found"));
+
+            // Verify recruiter owns this job
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
+
+            if (!application.getJob().getRecruiter().getId().equals(recruiter.getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Unauthorized to update this application"));
+            }
+
+            application.setStatus(status.toUpperCase());
+            applicationRepository.save(application);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Application status updated to: " + status);
+            response.put("applicationId", applicationId.toString());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/jobs")
+    public ResponseEntity<?> getMyJobs(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
+
+            List<Job> jobs = jobRepository.findByRecruiter(recruiter);
+            return ResponseEntity.ok(jobs);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<?> getDashboardStats(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
+
+            List<Application> applications = applicationRepository
+                    .findByJobRecruiterOrderByMatchPercentageDesc(recruiter);
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalApplications", applications.size());
+            stats.put("averageMatchPercentage", applications.stream()
+                    .mapToInt(Application::getMatchPercentage)
+                    .average()
+                    .orElse(0));
+            stats.put("shortlisted", applications.stream()
+                    .filter(a -> "SHORTLISTED".equals(a.getStatus()))
+                    .count());
+            stats.put("pending", applications.stream()
+                    .filter(a -> "PENDING".equals(a.getStatus()))
+                    .count());
+
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 }

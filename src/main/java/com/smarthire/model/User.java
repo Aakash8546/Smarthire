@@ -18,8 +18,8 @@ import java.util.List;
 @AllArgsConstructor
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)  // ✅ Changed to IDENTITY for auto-increment
-    private Long id;  // ✅ String → Long
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(unique = true, nullable = false)
     private String email;
@@ -30,17 +30,23 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "user_type", nullable = false)
+    private String userType;
+
     @Column(name = "is_verified")
-    private boolean verified = false;
+    private boolean isVerified = false;
 
     @Column(name = "verification_token")
     private String verificationToken;
 
-    @Column(name = "role")
-    private String role = "USER";
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Resume resume;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Resume> resumes = new ArrayList<>();
+    private List<Application> applications = new ArrayList<>();
+
+    @OneToMany(mappedBy = "recruiter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Job> postedJobs = new ArrayList<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;

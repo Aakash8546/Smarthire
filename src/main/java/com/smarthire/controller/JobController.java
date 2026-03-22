@@ -1,91 +1,121 @@
 package com.smarthire.controller;
 
-import com.smarthire.dto.MatchResult;
+import com.smarthire.dto.JobRecommendationResponse;
+import com.smarthire.dto.MatchResponse;
 import com.smarthire.model.Job;
-import com.smarthire.model.Resume;
-import com.smarthire.model.User;
+import com.smarthire.model.SkillGapRoadmap;
 import com.smarthire.repository.JobRepository;
-import com.smarthire.repository.ResumeRepository;
 import com.smarthire.service.JobMatchingService;
-import com.smarthire.service.JobRecommendationService;
-import com.smarthire.service.SkillGapService;
-import com.smarthire.util.JwtUtil;
-import lombok.RequiredArgsConstructor;
+import com.smarthire.service.RecommendationService;
+import com.smarthire.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/jobs")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class JobController {
 
-    private final JobRepository jobRepository;
-    private final JobMatchingService matchingService;
-    private final JobRecommendationService recommendationService;
-    private final SkillGapService skillGapService;
-    private final ResumeRepository resumeRepository;
-    private final JwtUtil jwtUtil;
+    @Autowired
+    private JobRepository jobRepository;
 
-    @GetMapping("/all")
+    @Autowired
+    private JobMatchingService jobMatchingService;
+
+    @Autowired
+    private RecommendationService recommendationService;
+
+    @Autowired
+    private UserService userService;
+
+    @GetMapping
     public ResponseEntity<?> getAllJobs() {
-        return ResponseEntity.ok(jobRepository.findAll());
+        try {
+            List<Job> jobs = jobRepository.findActiveJobs();
+            return ResponseEntity.ok(jobs);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getJobById(@PathVariable Long id) {
+        try {
+            Job job = jobRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Job not found"));
+            return ResponseEntity.ok(job);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createJob(@AuthenticationPrincipal UserDetails userDetails,
+                                       @RequestBody Job job) {
+        try {
+            Long recruiterId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            job.setRecruiter(userService.getUserById(recruiterId));
+            job.setActive(true);
+            Job savedJob = jobRepository.save(job);
+            return ResponseEntity.ok(savedJob);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/{jobId}/match")
+    public ResponseEntity<?> matchResumeToJob(@AuthenticationPrincipal UserDetails userDetails,
+                                              @PathVariable Long jobId) {
+        try {
+            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            MatchResponse response = jobMatchingService.matchResumeToJob(userId, jobId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     @GetMapping("/recommendations")
-    public ResponseEntity<?> getRecommendations(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getRecommendations(@AuthenticationPrincipal UserDetails userDetails,
+                                                @RequestParam(defaultValue = "10") int limit) {
         try {
-            String token = authHeader.substring(7);
-            User user = jwtUtil.getUserFromToken(token);
-
-            Resume latestResume = resumeRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())
-                    .orElseThrow(() -> new RuntimeException("No resume found. Please upload resume first."));
-
-            List<MatchResult> recommendations = recommendationService.getPersonalizedRecommendations(latestResume);
+            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            List<JobRecommendationResponse> recommendations =
+                    recommendationService.getPersonalizedRecommendations(userId, limit);
             return ResponseEntity.ok(recommendations);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 
-    @PostMapping("/match/{jobId}")
-    public ResponseEntity<?> matchWithJob(
-            @PathVariable String jobId,
-            @RequestHeader("Authorization") String authHeader) {
+    @PostMapping("/{jobId}/roadmap")
+    public ResponseEntity<?> generateRoadmap(@AuthenticationPrincipal UserDetails userDetails,
+                                             @PathVariable Long jobId) {
         try {
-            String token = authHeader.substring(7);
-            User user = jwtUtil.getUserFromToken(token);
-
-            Resume latestResume = resumeRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())
-                    .orElseThrow(() -> new RuntimeException("No resume found"));
-
-            Job job = jobRepository.findById(jobId)
-                    .orElseThrow(() -> new RuntimeException("Job not found"));
-
-            var matchResponse = matchingService.matchResumeWithJob(latestResume, job);
-            return ResponseEntity.ok(matchResponse);
+            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            SkillGapRoadmap roadmap = recommendationService.generateSkillGapRoadmap(userId, jobId);
+            return ResponseEntity.ok(roadmap);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/skill-gap")
-    public ResponseEntity<?> getSkillGapRoadmap(@RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.substring(7);
-            User user = jwtUtil.getUserFromToken(token);
-
-            Resume latestResume = resumeRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())
-                    .orElseThrow(() -> new RuntimeException("No resume found"));
-
-            List<String> targetSkills = List.of("Docker", "Kubernetes", "AWS", "Microservices");
-            String roadmap = skillGapService.generateLearningRoadmap(targetSkills, latestResume);
-            return ResponseEntity.ok(Map.of("roadmap", roadmap));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 }
