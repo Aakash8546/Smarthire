@@ -60,15 +60,6 @@ public class AIService {
         return callAIService(prompt);
     }
 
-    public int getJobRecommendationScore(List<String> userSkills, List<String> jobSkills) {
-        String prompt = String.format(
-                "Rate the suitability of this candidate for the job on a scale of 0-100.\n" +
-                        "Candidate skills: %s\n" +
-                        "Job skills: %s\n" +
-                        "Return only the number (0-100).",
-                String.join(", ", userSkills),
-                String.join(", ", jobSkills)
-        );
 
         String response = callAIService(prompt);
         try {
