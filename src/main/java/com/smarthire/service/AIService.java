@@ -60,6 +60,15 @@ public class AIService {
         return callAIService(prompt);
     }
 
+    public int getJobRecommendationScore(List<String> userSkills, List<String> jobSkills) {
+        String prompt = String.format(
+                "Rate the suitability of this candidate for the job on a scale of 0-100.\n" +
+                        "Candidate skills: %s\n" +
+                        "Job skills: %s\n" +
+                        "Return only the number (0-100).",
+                String.join(", ", userSkills),
+                String.join(", ", jobSkills)
+        );
 
         String response = callAIService(prompt);
         try {
@@ -178,62 +187,7 @@ public class AIService {
         }
     }
 
-    private String callOpenAIAPI(String prompt) {
-        try {
 
-            String url = "https://api.openai.com/v1/chat/completions";
-
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-3.5-turbo");
-
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", "You are a helpful career advisor and resume analyzer.");
-            messages.add(systemMessage);
-
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", prompt);
-            messages.add(userMessage);
-
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.7);
-            requestBody.put("max_tokens", 1000);
-
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + apiKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    request,
-                    Map.class
-            );
-
-
-            if (response.getBody() != null && response.getBody().containsKey("choices")) {
-                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
-                if (!choices.isEmpty()) {
-                    Map<String, Object> choice = choices.get(0);
-                    Map<String, String> message = (Map<String, String>) choice.get("message");
-                    return message.get("content");
-                }
-            }
-
-            return getFallbackResponse(prompt);
-
-        } catch (Exception e) {
-            System.err.println("Error calling OpenAI API: " + e.getMessage());
-            return getFallbackResponse(prompt);
-        }
-    }
 
     private String getFallbackResponse(String prompt) {
         System.out.println("Using fallback response for prompt: " + prompt.substring(0, Math.min(100, prompt.length())));
