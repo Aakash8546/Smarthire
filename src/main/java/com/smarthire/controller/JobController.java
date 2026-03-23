@@ -78,7 +78,7 @@ public class JobController {
 
             System.out.println("Job created with ID: " + savedJob.getId());
 
-            // Return DTO instead of full entity
+
             JobResponseDTO jobDTO = convertToDTO(savedJob);
             return ResponseEntity.ok(jobDTO);
 
@@ -112,31 +112,6 @@ public class JobController {
         }
     }
 
-    @GetMapping("/recommendations")
-    public ResponseEntity<?> getRecommendations(@AuthenticationPrincipal UserDetails userDetails, @RequestParam(defaultValue = "10") int limit) {
-        try {
-            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
-            List<JobRecommendationResponse> recommendations = recommendationService.getPersonalizedRecommendations(userId, limit);
-            return ResponseEntity.ok(recommendations);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
-    }
-
-    @PostMapping("/{jobId}/roadmap")
-    public ResponseEntity<?> generateRoadmap(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long jobId) {
-        try {
-            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
-            SkillGapRoadmap roadmap = recommendationService.generateSkillGapRoadmap(userId, jobId);
-            return ResponseEntity.ok(roadmap);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
-    }
 
 
     private JobResponseDTO convertToDTO(Job job) {
