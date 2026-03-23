@@ -244,43 +244,6 @@ public class AIService {
         }
     }
 
-    private String getFallbackResponse(String prompt) {
-        System.out.println("Using fallback response for prompt: " + prompt.substring(0, Math.min(100, prompt.length())));
-
-        if (prompt.contains("expert resume analyzer")) {
-            return "SKILLS: Java, Python, Spring Boot, React, SQL, AWS, Docker, Git, REST APIs, Microservices\n" +
-                    "SCORE: 78\n" +
-                    "SUGGESTIONS:\n" +
-                    "* Add more quantifiable achievements with metrics (e.g., 'Improved performance by 30%')\n" +
-                    "* Include relevant certifications like AWS Certified Developer or Oracle Java Certification\n" +
-                    "* Improve project descriptions with specific technologies used and your role\n" +
-                    "* Add soft skills like team collaboration, leadership, and communication\n" +
-                    "* Include links to GitHub portfolio or LinkedIn profile";
-        } else if (prompt.contains("learning roadmap")) {
-            return "Week 1-2: Complete online courses\n" +
-                    "- Udemy: 'Complete Java Masterclass' (10 hours)\n" +
-                    "- Coursera: 'Spring Boot Fundamentals' (8 hours)\n" +
-                    "- Build a simple CRUD application\n\n" +
-                    "Week 3-4: Build portfolio projects\n" +
-                    "- Create a REST API with Spring Boot\n" +
-                    "- Integrate with PostgreSQL database\n" +
-                    "- Add JWT authentication\n\n" +
-                    "Week 5-6: Advanced topics\n" +
-                    "- Learn Docker and containerization\n" +
-                    "- Study microservices architecture\n" +
-                    "- Contribute to open source projects\n\n" +
-                    "Week 7-8: Interview preparation\n" +
-                    "- Practice coding challenges on LeetCode\n" +
-                    "- Prepare system design questions\n" +
-                    "- Update resume with new skills and projects";
-        } else if (prompt.contains("suitability")) {
-            return "75";
-        } else if (prompt.contains("career advisor")) {
-            return "Based on your skills profile, you have a strong foundation. To improve your match percentage, focus on gaining practical experience with the missing technologies through hands-on projects. Consider obtaining relevant certifications to validate your expertise. The job market values demonstrated skills through portfolio projects as much as formal experience.";
-        } else {
-            return "Based on your skills profile, focus on strengthening your core technical competencies and building practical projects to demonstrate your abilities. Consider online certifications to validate your expertise. The key is to show practical application of your skills through concrete examples.";
-        }
-    }
 
     private List<String> extractSkills(String response) {
         List<String> skills = new ArrayList<>();
