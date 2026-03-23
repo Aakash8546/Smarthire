@@ -24,26 +24,6 @@ public class AIService {
     @Value("${ai.service.provider}")
     private String provider;
 
-    public ResumeAnalysisResponse analyzeResume(String resumeText) {
-
-        String truncatedText = resumeText.length() > 10000 ? resumeText.substring(0, 10000) : resumeText;
-
-        String prompt = "You are an expert resume analyzer. Analyze this resume and provide response in the following exact format:\n" +
-                "SKILLS: [comma-separated list of technical and soft skills found]\n" +
-                "SCORE: [number between 0-100 based on resume quality, structure, and completeness]\n" +
-                "SUGGESTIONS: [bullet points with specific improvement suggestions, each on new line starting with *]\n\n" +
-                "Resume content:\n" + truncatedText;
-
-        String aiResponse = callAIService(prompt);
-
-        ResumeAnalysisResponse response = new ResumeAnalysisResponse();
-        List<String> skills = extractSkills(aiResponse);
-        response.setExtractedSkills(skills.isEmpty() ? getDefaultSkills() : skills);
-        response.setScore(extractScore(aiResponse));
-        response.setSuggestions(extractSuggestions(aiResponse));
-
-        return response;
-    }
 
     public String getMatchingRecommendation(List<String> userSkills, List<String> jobSkills, int matchPercentage) {
         String prompt = String.format(
