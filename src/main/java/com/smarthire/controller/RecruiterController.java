@@ -137,5 +137,33 @@ public class RecruiterController {
         }
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<?> getDashboardStats(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            var recruiter = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Recruiter not found"));
 
+            List<Application> applications = applicationRepository
+                    .findByJobRecruiterOrderByMatchPercentageDesc(recruiter);
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalApplications", applications.size());
+            stats.put("averageMatchPercentage", applications.stream()
+                    .mapToInt(Application::getMatchPercentage)
+                    .average()
+                    .orElse(0));
+            stats.put("shortlisted", applications.stream()
+                    .filter(a -> "SHORTLISTED".equals(a.getStatus()))
+                    .count());
+            stats.put("pending", applications.stream()
+                    .filter(a -> "PENDING".equals(a.getStatus()))
+                    .count());
+
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
 }
