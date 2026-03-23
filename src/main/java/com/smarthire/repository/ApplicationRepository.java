@@ -22,3 +22,6 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
     boolean existsByUserAndJob(User user, Job job);
 
+    @Query("SELECT a FROM Application a WHERE a.job.recruiter = :recruiter AND a.matchPercentage >= :minMatchPercentage")
+    List<Application> findByRecruiterAndMinMatchPercentage(@Param("recruiter") User recruiter, @Param("minMatchPercentage") int minMatchPercentage);
+}
