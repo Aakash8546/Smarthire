@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -43,9 +44,11 @@ public class Job {
 
     @ManyToOne
     @JoinColumn(name = "recruiter_id")
+    @JsonIgnore  // Add this to prevent infinite recursion
     private User recruiter;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore  // Add this to prevent infinite recursion
     private List<Application> applications = new ArrayList<>();
 
     @Column(name = "is_active")

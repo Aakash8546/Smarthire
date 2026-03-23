@@ -44,9 +44,11 @@ public class UserService implements UserDetailsService {
     }
 
     public User registerUser(SignupRequest request) {
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered!");
         }
+
 
         User user = new User();
         user.setEmail(request.getEmail());
@@ -55,13 +57,20 @@ public class UserService implements UserDetailsService {
         user.setUserType(request.getUserType().toUpperCase());
         user.setVerified(false);
 
+
         String verificationToken = UUID.randomUUID().toString();
         user.setVerificationToken(verificationToken);
 
+
         User savedUser = userRepository.save(user);
 
-        // Send verification email via Twilio SendGrid
-        emailService.sendVerificationEmail(savedUser.getEmail(), verificationToken, savedUser.getName());
+
+        try {
+            emailService.sendVerificationEmail(savedUser.getEmail(), verificationToken, savedUser.getName());
+        } catch (Exception e) {
+            System.err.println("Failed to send verification email: " + e.getMessage());
+
+        }
 
         return savedUser;
     }
@@ -95,11 +104,20 @@ public class UserService implements UserDetailsService {
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
     }
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+    }
+
+    public Long getUserIdByEmail(String email) {
+        User user = getUserByEmail(email);
+        return user.getId();
+    }
+
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 }

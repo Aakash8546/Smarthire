@@ -28,21 +28,46 @@ public class ResumeController {
     public ResponseEntity<?> uploadResume(@AuthenticationPrincipal UserDetails userDetails,
                                           @RequestParam("file") MultipartFile file) {
         try {
+            System.out.println("=== Upload Resume Request ===");
+            System.out.println("UserDetails email: " + userDetails.getUsername());
+
+
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
+            System.out.println("User ID found: " + userId);
+
+
             if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "File is empty. Please select a file to upload.");
+                return ResponseEntity.badRequest().body(error);
             }
 
-            if (!file.getContentType().equals("application/pdf") &&
-                    !file.getContentType().equals("application/msword") &&
-                    !file.getContentType().equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") &&
-                    !file.getContentType().equals("text/plain")) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid file type. Please upload PDF, DOC, DOCX, or TXT file."));
+
+            if (file.getSize() > 10 * 1024 * 1024) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "File size exceeds 10MB limit.");
+                return ResponseEntity.badRequest().body(error);
             }
 
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+
+            String fileName = file.getOriginalFilename();
+            if (fileName != null && !fileName.isEmpty()) {
+                String fileExt = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+                if (!fileExt.equals("pdf") && !fileExt.equals("docx") && !fileExt.equals("txt")) {
+                    Map<String, String> error = new HashMap<>();
+                    error.put("error", "Invalid file type. Please upload PDF, DOCX, or TXT files. Got: " + fileExt);
+                    return ResponseEntity.badRequest().body(error);
+                }
+                System.out.println("File type: " + fileExt);
+            }
+
             ResumeAnalysisResponse response = resumeAnalysisService.analyzeResume(userId, file);
+            System.out.println("Resume uploaded successfully for user: " + userId);
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
+            System.err.println("Error uploading resume: " + e.getMessage());
+            e.printStackTrace();
             Map<String, String> error = new HashMap<>();
             error.put("error", "Error processing resume: " + e.getMessage());
             return ResponseEntity.badRequest().body(error);
@@ -52,10 +77,17 @@ public class ResumeController {
     @GetMapping("/analysis")
     public ResponseEntity<?> getResumeAnalysis(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            System.out.println("=== Get Resume Analysis Request ===");
+            System.out.println("UserDetails email: " + userDetails.getUsername());
+
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
+            System.out.println("User ID: " + userId);
+
             ResumeAnalysisResponse response = resumeAnalysisService.getResumeAnalysis(userId);
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
+            System.err.println("Error getting resume analysis: " + e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
@@ -65,10 +97,12 @@ public class ResumeController {
     @GetMapping("/exists")
     public ResponseEntity<?> hasResume(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
             boolean hasResume = resumeAnalysisService.hasResume(userId);
-            Map<String, Boolean> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("hasResume", hasResume);
+            response.put("userId", userId);
+            response.put("email", userDetails.getUsername());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();

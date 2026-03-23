@@ -41,7 +41,7 @@ public class RecommendationService {
         for (Job job : activeJobs) {
             List<String> jobSkills = job.getRequiredSkillsList();
 
-            // Calculate match percentage
+
             long matchingSkills = userSkills.stream()
                     .filter(skill -> jobSkills.stream().anyMatch(jobSkill ->
                             jobSkill.toLowerCase().contains(skill.toLowerCase()) ||
@@ -51,10 +51,10 @@ public class RecommendationService {
             int matchPercentage = jobSkills.isEmpty() ? 0 :
                     (int) ((matchingSkills * 100) / jobSkills.size());
 
-            // Get AI recommendation score (enhanced)
+
             int aiScore = aiService.getJobRecommendationScore(userSkills, jobSkills);
 
-            // Combine scores
+
             int finalScore = (matchPercentage * 70 + aiScore * 30) / 100;
 
             JobRecommendationResponse response = new JobRecommendationResponse();
@@ -71,7 +71,7 @@ public class RecommendationService {
             recommendations.add(response);
         }
 
-        // Sort by match percentage and limit results
+
         return recommendations.stream()
                 .sorted(Comparator.comparing(JobRecommendationResponse::getMatchPercentage).reversed())
                 .limit(limit)
@@ -97,7 +97,7 @@ public class RecommendationService {
                                 jobSkill.toLowerCase().contains(userSkill.toLowerCase())))
                 .collect(Collectors.toList());
 
-        // Generate learning timeline using AI
+
         String roadmap = aiService.generateSkillGapRoadmap(missingSkills, job.getTitle());
         int estimatedWeeks = calculateEstimatedWeeks(missingSkills);
 
@@ -112,7 +112,7 @@ public class RecommendationService {
 
     private int calculateEstimatedWeeks(List<String> missingSkills) {
         if (missingSkills.isEmpty()) return 0;
-        // Simple calculation: 1-2 weeks per skill, capped between 2-8 weeks
+
         int weeks = missingSkills.size();
         return Math.min(8, Math.max(2, weeks));
     }

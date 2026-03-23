@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -25,6 +26,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @JsonIgnore  // Hide password from JSON responses
     private String password;
 
     @Column(nullable = false)
@@ -37,15 +39,19 @@ public class User {
     private boolean isVerified = false;
 
     @Column(name = "verification_token")
+    @JsonIgnore  // Hide token from JSON responses
     private String verificationToken;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore  // Prevent recursion
     private Resume resume;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore  // Prevent recursion
     private List<Application> applications = new ArrayList<>();
 
     @OneToMany(mappedBy = "recruiter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore  // Prevent recursion
     private List<Job> postedJobs = new ArrayList<>();
 
     @CreationTimestamp

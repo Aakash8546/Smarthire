@@ -40,18 +40,18 @@ public class JobMatchingService {
         List<String> userSkills = resume.getSkillsList();
         List<String> jobSkills = job.getRequiredSkillsList();
 
-        // Calculate match percentage
+
         int matchPercentage = calculateMatchPercentage(userSkills, jobSkills);
         List<String> missingSkills = findMissingSkills(userSkills, jobSkills);
         List<String> matchingSkills = findMatchingSkills(userSkills, jobSkills);
 
-        // Get AI recommendation
+
         String recommendation = aiService.getMatchingRecommendation(userSkills, jobSkills, matchPercentage);
 
-        // Check if already applied
+
         boolean alreadyApplied = applicationRepository.existsByUserAndJob(user, job);
 
-        // Save application if not exists
+
         if (!alreadyApplied) {
             Application application = new Application();
             application.setUser(user);

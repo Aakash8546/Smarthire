@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -20,10 +21,12 @@ public class Application {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore  // Prevent recursion
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "job_id")
+    @JsonIgnore  // Prevent recursion
     private Job job;
 
     private Integer matchPercentage;

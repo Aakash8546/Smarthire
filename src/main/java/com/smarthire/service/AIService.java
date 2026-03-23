@@ -25,7 +25,7 @@ public class AIService {
     private String provider;
 
     public ResumeAnalysisResponse analyzeResume(String resumeText) {
-        // Truncate resume text to avoid token limits (Gemini Pro has 30k token limit)
+
         String truncatedText = resumeText.length() > 10000 ? resumeText.substring(0, 10000) : resumeText;
 
         String prompt = "You are an expert resume analyzer. Analyze this resume and provide response in the following exact format:\n" +
@@ -72,7 +72,7 @@ public class AIService {
 
         String response = callAIService(prompt);
         try {
-            // Extract number from response
+
             String numberStr = response.trim().replaceAll("[^0-9]", "");
             if (!numberStr.isEmpty()) {
                 int score = Integer.parseInt(numberStr);
@@ -122,17 +122,17 @@ public class AIService {
 
     private String callGeminiAPI(String prompt) {
         try {
-            // Gemini API endpoint format
+
             String url = apiUrl + "?key=" + apiKey;
 
-            // Build request body according to Gemini API format
+
             Map<String, Object> requestBody = new HashMap<>();
 
-            // Contents array
+
             List<Map<String, Object>> contents = new ArrayList<>();
             Map<String, Object> content = new HashMap<>();
 
-            // Parts array with text
+
             List<Map<String, Object>> parts = new ArrayList<>();
             Map<String, Object> part = new HashMap<>();
             part.put("text", prompt);
@@ -142,19 +142,19 @@ public class AIService {
             contents.add(content);
             requestBody.put("contents", contents);
 
-            // Optional: Set generation config
+
             Map<String, Object> generationConfig = new HashMap<>();
             generationConfig.put("temperature", 0.7);
             generationConfig.put("maxOutputTokens", 1024);
             requestBody.put("generationConfig", generationConfig);
 
-            // Set headers
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            // Make API call
+
             ResponseEntity<Map> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -162,7 +162,7 @@ public class AIService {
                     Map.class
             );
 
-            // Parse response
+
             if (response.getBody() != null && response.getBody().containsKey("candidates")) {
                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.getBody().get("candidates");
                 if (!candidates.isEmpty()) {
@@ -189,10 +189,10 @@ public class AIService {
 
     private String callOpenAIAPI(String prompt) {
         try {
-            // OpenAI API endpoint
+
             String url = "https://api.openai.com/v1/chat/completions";
 
-            // Build request body
+
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "gpt-3.5-turbo");
 
@@ -211,14 +211,14 @@ public class AIService {
             requestBody.put("temperature", 0.7);
             requestBody.put("max_tokens", 1000);
 
-            // Set headers
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + apiKey);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            // Make API call
+
             ResponseEntity<Map> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -226,7 +226,7 @@ public class AIService {
                     Map.class
             );
 
-            // Parse response
+
             if (response.getBody() != null && response.getBody().containsKey("choices")) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
                 if (!choices.isEmpty()) {

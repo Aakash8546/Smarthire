@@ -1,9 +1,11 @@
 package com.smarthire.controller;
 
 import com.smarthire.dto.JobRecommendationResponse;
+import com.smarthire.dto.JobResponseDTO;
 import com.smarthire.dto.MatchResponse;
 import com.smarthire.model.Job;
 import com.smarthire.model.SkillGapRoadmap;
+import com.smarthire.model.User;
 import com.smarthire.repository.JobRepository;
 import com.smarthire.service.JobMatchingService;
 import com.smarthire.service.RecommendationService;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -39,7 +42,8 @@ public class JobController {
     public ResponseEntity<?> getAllJobs() {
         try {
             List<Job> jobs = jobRepository.findActiveJobs();
-            return ResponseEntity.ok(jobs);
+            List<JobResponseDTO> jobDTOs = jobs.stream().map(this::convertToDTO).collect(Collectors.toList());
+            return ResponseEntity.ok(jobDTOs);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
@@ -50,9 +54,9 @@ public class JobController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getJobById(@PathVariable Long id) {
         try {
-            Job job = jobRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Job not found"));
-            return ResponseEntity.ok(job);
+            Job job = jobRepository.findById(id).orElseThrow(() -> new RuntimeException("Job not found"));
+            JobResponseDTO jobDTO = convertToDTO(job);
+            return ResponseEntity.ok(jobDTO);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
@@ -61,15 +65,25 @@ public class JobController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createJob(@AuthenticationPrincipal UserDetails userDetails,
-                                       @RequestBody Job job) {
+    public ResponseEntity<?> createJob(@AuthenticationPrincipal UserDetails userDetails, @RequestBody Job job) {
         try {
-            Long recruiterId = userService.getUserByEmail(userDetails.getUsername()).getId();
-            job.setRecruiter(userService.getUserById(recruiterId));
+            System.out.println("=== Create Job Request ===");
+            System.out.println("Recruiter email: " + userDetails.getUsername());
+
+            Long recruiterId = userService.getUserIdByEmail(userDetails.getUsername());
+            User recruiter = userService.getUserById(recruiterId);
+            job.setRecruiter(recruiter);
             job.setActive(true);
             Job savedJob = jobRepository.save(job);
-            return ResponseEntity.ok(savedJob);
+
+            System.out.println("Job created with ID: " + savedJob.getId());
+
+            // Return DTO instead of full entity
+            JobResponseDTO jobDTO = convertToDTO(savedJob);
+            return ResponseEntity.ok(jobDTO);
+
         } catch (Exception e) {
+            System.err.println("Error creating job: " + e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
@@ -77,13 +91,21 @@ public class JobController {
     }
 
     @GetMapping("/{jobId}/match")
-    public ResponseEntity<?> matchResumeToJob(@AuthenticationPrincipal UserDetails userDetails,
-                                              @PathVariable Long jobId) {
+    public ResponseEntity<?> matchResumeToJob(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long jobId) {
         try {
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            System.out.println("=== Match Resume to Job Request ===");
+            System.out.println("User email: " + userDetails.getUsername());
+            System.out.println("Job ID: " + jobId);
+
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
+            System.out.println("User ID: " + userId);
+
             MatchResponse response = jobMatchingService.matchResumeToJob(userId, jobId);
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
+            System.err.println("Error matching resume to job: " + e.getMessage());
+            e.printStackTrace();
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
@@ -91,12 +113,10 @@ public class JobController {
     }
 
     @GetMapping("/recommendations")
-    public ResponseEntity<?> getRecommendations(@AuthenticationPrincipal UserDetails userDetails,
-                                                @RequestParam(defaultValue = "10") int limit) {
+    public ResponseEntity<?> getRecommendations(@AuthenticationPrincipal UserDetails userDetails, @RequestParam(defaultValue = "10") int limit) {
         try {
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
-            List<JobRecommendationResponse> recommendations =
-                    recommendationService.getPersonalizedRecommendations(userId, limit);
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
+            List<JobRecommendationResponse> recommendations = recommendationService.getPersonalizedRecommendations(userId, limit);
             return ResponseEntity.ok(recommendations);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -106,10 +126,9 @@ public class JobController {
     }
 
     @PostMapping("/{jobId}/roadmap")
-    public ResponseEntity<?> generateRoadmap(@AuthenticationPrincipal UserDetails userDetails,
-                                             @PathVariable Long jobId) {
+    public ResponseEntity<?> generateRoadmap(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long jobId) {
         try {
-            Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
+            Long userId = userService.getUserIdByEmail(userDetails.getUsername());
             SkillGapRoadmap roadmap = recommendationService.generateSkillGapRoadmap(userId, jobId);
             return ResponseEntity.ok(roadmap);
         } catch (Exception e) {
@@ -117,5 +136,34 @@ public class JobController {
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+
+    private JobResponseDTO convertToDTO(Job job) {
+        JobResponseDTO dto = new JobResponseDTO();
+        dto.setId(job.getId());
+        dto.setTitle(job.getTitle());
+        dto.setDescription(job.getDescription());
+        dto.setCompany(job.getCompany());
+        dto.setLocation(job.getLocation());
+        dto.setRequiredSkills(job.getRequiredSkillsList());
+        dto.setExperienceYears(job.getExperienceYears());
+        dto.setSalaryRange(job.getSalaryRange());
+        dto.setActive(job.isActive());
+        dto.setCreatedAt(job.getCreatedAt());
+
+        if (job.getRecruiter() != null) {
+            dto.setRecruiterId(job.getRecruiter().getId());
+            dto.setRecruiterName(job.getRecruiter().getName());
+            dto.setRecruiterEmail(job.getRecruiter().getEmail());
+        }
+
+        if (job.getApplications() != null) {
+            dto.setApplicationsCount(job.getApplications().size());
+        } else {
+            dto.setApplicationsCount(0);
+        }
+
+        return dto;
     }
 }
