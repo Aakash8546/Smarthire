@@ -1,18 +1,11 @@
 package com.smarthire.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "skill_gap_roadmaps")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class SkillGapRoadmap {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,4 +26,25 @@ public class SkillGapRoadmap {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    public SkillGapRoadmap() {}
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public Job getJob() { return job; }
+    public void setJob(Job job) { this.job = job; }
+
+    public String getRoadmap() { return roadmap; }
+    public void setRoadmap(String roadmap) { this.roadmap = roadmap; }
+
+    public Integer getEstimatedWeeks() { return estimatedWeeks; }
+    public void setEstimatedWeeks(Integer estimatedWeeks) { this.estimatedWeeks = estimatedWeeks; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

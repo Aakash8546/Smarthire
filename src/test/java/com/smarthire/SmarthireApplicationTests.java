@@ -5,11 +5,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("test")  // This is CRITICAL - forces test profile
 class SmarthireApplicationTests {
 
     @Test
     void contextLoads() {
-        // This test will now pass
+        System.out.println("✅ Application context loaded successfully with H2 database!");
     }
 }

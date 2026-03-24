@@ -1,11 +1,7 @@
 package com.smarthire.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,9 +9,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "resumes")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Resume {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,6 +41,39 @@ public class Resume {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    public Resume() {}
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+
+    public String getFilePath() { return filePath; }
+    public void setFilePath(String filePath) { this.filePath = filePath; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+
+    public String getExtractedSkills() { return extractedSkills; }
+    public void setExtractedSkills(String extractedSkills) { this.extractedSkills = extractedSkills; }
+
+    public Integer getAiScore() { return aiScore; }
+    public void setAiScore(Integer aiScore) { this.aiScore = aiScore; }
+
+    public String getSkillSuggestions() { return skillSuggestions; }
+    public void setSkillSuggestions(String skillSuggestions) { this.skillSuggestions = skillSuggestions; }
+
+    public LocalDateTime getAnalysisDate() { return analysisDate; }
+    public void setAnalysisDate(LocalDateTime analysisDate) { this.analysisDate = analysisDate; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public List<String> getSkillsList() {
         if (extractedSkills != null && !extractedSkills.isEmpty()) {
