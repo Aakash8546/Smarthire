@@ -472,6 +472,183 @@ public class EmailService {
         sendEmail(to, subject, content);
     }
 
+    @Async
+    public void sendApplicationConfirmation(String to, String candidateName, String jobTitle, String company, int matchPercentage) {
+        String subject = "✅ Application Submitted Successfully - " + jobTitle;
+        String content = String.format(
+                "<!DOCTYPE html>" +
+                        "<html>" +
+                        "<head>" +
+                        "<meta charset='UTF-8'>" +
+                        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                        "<title>Application Confirmation - SmartHire</title>" +
+                        "<style>" +
+                        "body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7fc; margin: 0; padding: 0; }" +
+                        ".email-wrapper { max-width: 600px; margin: 40px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }" +
+                        ".header { background: linear-gradient(135deg, #4CAF50 0%%, #45a049 100%%); padding: 40px 30px; text-align: center; }" +
+                        ".logo { font-size: 48px; margin-bottom: 10px; }" +
+                        ".header h1 { color: white; margin: 0; font-size: 28px; }" +
+                        ".content { padding: 40px 30px; }" +
+                        "h2 { color: #4CAF50; margin-bottom: 20px; }" +
+                        ".match-box { background: #f0f7f0; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center; }" +
+                        ".match-percentage { font-size: 48px; font-weight: bold; color: #4CAF50; }" +
+                        ".btn { display: inline-block; background: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }" +
+                        ".footer { text-align: center; padding: 30px; background: #f8f9fa; border-top: 1px solid #e9ecef; font-size: 13px; color: #6c757d; }" +
+                        "</style>" +
+                        "</head>" +
+                        "<body>" +
+                        "<div class='email-wrapper'>" +
+                        "<div class='header'>" +
+                        "<div class='logo'>✅</div>" +
+                        "<h1>SmartHire</h1>" +
+                        "</div>" +
+                        "<div class='content'>" +
+                        "<h2>Thank you for applying, %s! 🎉</h2>" +
+                        "<p>Your application for <strong>%s</strong> at <strong>%s</strong> has been submitted successfully.</p>" +
+                        "<div class='match-box'>" +
+                        "<p><strong>Your Match Score:</strong></p>" +
+                        "<div class='match-percentage'>%d%%</div>" +
+                        "<p>Great match! The recruiter will review your application soon.</p>" +
+                        "</div>" +
+                        "<div style='text-align: center;'>" +
+                        "<a href='%s/dashboard/applications' class='btn'>📊 Track Application</a>" +
+                        "</div>" +
+                        "<p>The recruiter will review your application and update you on the status. You can track all your applications in your dashboard.</p>" +
+                        "</div>" +
+                        "<div class='footer'>" +
+                        "<p>Best regards,<br/><strong>SmartHire Team</strong> 🚀</p>" +
+                        "</div>" +
+                        "</div>" +
+                        "</body>" +
+                        "</html>",
+                candidateName, jobTitle, company, matchPercentage, baseUrl
+        );
+        sendEmail(to, subject, content);
+    }
+
+    @Async
+    public void sendNewApplicationNotification(String to, String recruiterName, String jobTitle, String candidateName, int matchPercentage) {
+        String subject = "📋 New Application Received - " + jobTitle;
+        String content = String.format(
+                "<!DOCTYPE html>" +
+                        "<html>" +
+                        "<head>" +
+                        "<meta charset='UTF-8'>" +
+                        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                        "<title>New Application - SmartHire</title>" +
+                        "<style>" +
+                        "body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7fc; margin: 0; padding: 0; }" +
+                        ".email-wrapper { max-width: 600px; margin: 40px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }" +
+                        ".header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center; }" +
+                        ".logo { font-size: 48px; margin-bottom: 10px; }" +
+                        ".header h1 { color: white; margin: 0; font-size: 28px; }" +
+                        ".content { padding: 40px 30px; }" +
+                        "h2 { color: #667eea; margin-bottom: 20px; }" +
+                        ".application-card { background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; }" +
+                        ".match-score { font-size: 36px; font-weight: bold; color: #667eea; }" +
+                        ".btn { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }" +
+                        ".footer { text-align: center; padding: 30px; background: #f8f9fa; border-top: 1px solid #e9ecef; font-size: 13px; color: #6c757d; }" +
+                        "</style>" +
+                        "</head>" +
+                        "<body>" +
+                        "<div class='email-wrapper'>" +
+                        "<div class='header'>" +
+                        "<div class='logo'>📋</div>" +
+                        "<h1>SmartHire</h1>" +
+                        "</div>" +
+                        "<div class='content'>" +
+                        "<h2>Hello %s! 👋</h2>" +
+                        "<p>You've received a new application for <strong>%s</strong>.</p>" +
+                        "<div class='application-card'>" +
+                        "<p><strong>Candidate:</strong> %s</p>" +
+                        "<p><strong>Match Score:</strong> <span class='match-score'>%d%%</span></p>" +
+                        "</div>" +
+                        "<div style='text-align: center;'>" +
+                        "<a href='%s/recruiter/applications' class='btn'>👁️ Review Application</a>" +
+                        "</div>" +
+                        "<p>Login to your recruiter dashboard to review this application and take appropriate action.</p>" +
+                        "</div>" +
+                        "<div class='footer'>" +
+                        "<p>Best regards,<br/><strong>SmartHire Team</strong> 🚀</p>" +
+                        "</div>" +
+                        "</div>" +
+                        "</body>" +
+                        "</html>",
+                recruiterName, jobTitle, candidateName, matchPercentage, baseUrl
+        );
+        sendEmail(to, subject, content);
+    }
+
+    @Async
+    public void sendApplicationStatusUpdate(String to, String candidateName, String jobTitle, String company, String status, String notes) {
+        String statusColor = getStatusColor(status);
+        String subject = "📢 Application Status Update - " + jobTitle;
+        String content = String.format(
+                "<!DOCTYPE html>" +
+                        "<html>" +
+                        "<head>" +
+                        "<meta charset='UTF-8'>" +
+                        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                        "<title>Application Status Update - SmartHire</title>" +
+                        "<style>" +
+                        "body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7fc; margin: 0; padding: 0; }" +
+                        ".email-wrapper { max-width: 600px; margin: 40px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }" +
+                        ".header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center; }" +
+                        ".logo { font-size: 48px; margin-bottom: 10px; }" +
+                        ".header h1 { color: white; margin: 0; font-size: 28px; }" +
+                        ".content { padding: 40px 30px; }" +
+                        "h2 { color: #667eea; margin-bottom: 20px; }" +
+                        ".status-box { background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid %s; }" +
+                        ".status { font-size: 24px; font-weight: bold; color: %s; }" +
+                        ".notes-box { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0; }" +
+                        ".btn { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }" +
+                        ".footer { text-align: center; padding: 30px; background: #f8f9fa; border-top: 1px solid #e9ecef; font-size: 13px; color: #6c757d; }" +
+                        "</style>" +
+                        "</head>" +
+                        "<body>" +
+                        "<div class='email-wrapper'>" +
+                        "<div class='header'>" +
+                        "<div class='logo'>📢</div>" +
+                        "<h1>SmartHire</h1>" +
+                        "</div>" +
+                        "<div class='content'>" +
+                        "<h2>Hello %s!</h2>" +
+                        "<p>Your application for <strong>%s</strong> at <strong>%s</strong> has been updated.</p>" +
+                        "<div class='status-box' style='border-left-color: %s;'>" +
+                        "<p><strong>New Status:</strong></p>" +
+                        "<div class='status' style='color: %s;'>%s</div>" +
+                        "%s" +
+                        "</div>" +
+                        "<div style='text-align: center;'>" +
+                        "<a href='%s/dashboard/applications' class='btn'>📊 View Application</a>" +
+                        "</div>" +
+                        "<p>You can track all your applications and their status in your dashboard.</p>" +
+                        "</div>" +
+                        "<div class='footer'>" +
+                        "<p>Best regards,<br/><strong>SmartHire Team</strong> 🚀</p>" +
+                        "</div>" +
+                        "</div>" +
+                        "</body>" +
+                        "</html>",
+                statusColor, statusColor, candidateName, jobTitle, company,
+                statusColor, statusColor, status,
+                notes != null && !notes.isEmpty() ? "<div class='notes-box'><strong>Recruiter Notes:</strong><br/>" + notes + "</div>" : "",
+                baseUrl
+        );
+        sendEmail(to, subject, content);
+    }
+
+    private String getStatusColor(String status) {
+        switch (status.toLowerCase()) {
+            case "accepted": return "#4CAF50";
+            case "rejected": return "#f44336";
+            case "shortlisted": return "#FF9800";
+            case "interview scheduled": return "#2196F3";
+            case "reviewing": return "#9C27B0";
+            default: return "#667eea";
+        }
+    }
+
     private void sendEmail(String to, String subject, String htmlContent) {
         try {
             System.out.println("=== Sending Email ===");
