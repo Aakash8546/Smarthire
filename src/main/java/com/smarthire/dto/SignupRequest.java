@@ -1,36 +1,37 @@
 package com.smarthire.dto;
 
+import com.smarthire.model.UserType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class SignupRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    private String email;
-
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 40, message = "Password must be between 6 and 40 characters")
-    private String password;
-
-    @NotBlank(message = "Name is required")
+    @NotBlank
+    @Size(min = 3, max = 50)
     private String name;
 
-    @NotBlank(message = "User type is required")
-    private String userType;
+    @NotBlank
+    @Email
+    private String email;
 
-    // Constructors
-    public SignupRequest() {}
+    @NotBlank
+    @Size(min = 6, max = 40)
+    private String password;
 
-    public SignupRequest(String email, String password, String name, String userType) {
-        this.email = email;
-        this.password = password;
-        this.name = name;
-        this.userType = userType;
-    }
+    @NotNull
+    private UserType userType;
 
     // Getters and Setters
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -47,19 +48,11 @@ public class SignupRequest {
         this.password = password;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getUserType() {
+    public UserType getUserType() {
         return userType;
     }
 
-    public void setUserType(String userType) {
+    public void setUserType(UserType userType) {
         this.userType = userType;
     }
 }

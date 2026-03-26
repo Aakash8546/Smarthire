@@ -1,6 +1,7 @@
 package com.smarthire.controller;
 
 import com.smarthire.dto.ResumeAnalysisResponse;
+import com.smarthire.model.User;
 import com.smarthire.service.ResumeAnalysisService;
 import com.smarthire.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,10 +32,13 @@ public class ResumeController {
             System.out.println("=== Upload Resume Request ===");
             System.out.println("UserDetails email: " + userDetails.getUsername());
 
-
+            // Get user ID by email
             Long userId = userService.getUserIdByEmail(userDetails.getUsername());
             System.out.println("User ID found: " + userId);
 
+            // If you need the full user object
+            // User user = userService.getUserById(userId);
+            // System.out.println("User name: " + user.getName());
 
             if (file.isEmpty()) {
                 Map<String, String> error = new HashMap<>();
@@ -42,13 +46,11 @@ public class ResumeController {
                 return ResponseEntity.badRequest().body(error);
             }
 
-
             if (file.getSize() > 10 * 1024 * 1024) {
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "File size exceeds 10MB limit.");
                 return ResponseEntity.badRequest().body(error);
             }
-
 
             String fileName = file.getOriginalFilename();
             if (fileName != null && !fileName.isEmpty()) {
@@ -108,6 +110,26 @@ public class ResumeController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    // Example endpoint using getUserById
+    @GetMapping("/user/{id}")
+    public ResponseEntity<?> getUserResumeInfo(@PathVariable Long id) {
+        try {
+            User user = userService.getUserById(id);
+            boolean hasResume = resumeAnalysisService.hasResume(id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", id);
+            response.put("userName", user.getName());
+            response.put("userEmail", user.getEmail());
+            response.put("userType", user.getUserType());
+            response.put("hasResume", hasResume);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

@@ -2,6 +2,7 @@ package com.smarthire.controller;
 
 import com.smarthire.dto.LoginRequest;
 import com.smarthire.dto.SignupRequest;
+import com.smarthire.model.User;
 import com.smarthire.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +23,17 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest request) {
         try {
-            userService.registerUser(request);
-            Map<String, String> response = new HashMap<>();
+            User registeredUser = userService.registerUser(request);
+
+            Map<String, Object> response = new HashMap<>();
             response.put("message", "User registered successfully. Please check your email for verification.");
-            response.put("email", request.getEmail());
+            response.put("email", registeredUser.getEmail());
+            response.put("name", registeredUser.getName());
+            response.put("userType", registeredUser.getUserType().name());
+            response.put("isRecruiter", registeredUser.getUserType().name().equals("RECRUITER"));
+            response.put("isCandidate", registeredUser.getUserType().name().equals("CANDIDATE"));
+            response.put("isVerified", registeredUser.isVerified());
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -37,11 +45,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest request) {
         try {
-            String token = userService.authenticateUser(request);
-            Map<String, String> response = new HashMap<>();
-            response.put("token", token);
-            response.put("message", "Login successful");
-            return ResponseEntity.ok(response);
+            Map<String, Object> authData = userService.authenticateUserWithDetails(request);
+            return ResponseEntity.ok(authData);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

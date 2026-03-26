@@ -12,6 +12,7 @@ import java.util.List;
 @Entity
 @Table(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,8 +27,9 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_type", nullable = false)
-    private String userType;
+    private UserType userType;
 
     @Column(name = "is_verified")
     private boolean isVerified = false;
@@ -35,6 +37,9 @@ public class User {
     @Column(name = "verification_token")
     @JsonIgnore
     private String verificationToken;
+
+    @Column(name = "profile_completed")
+    private boolean profileCompleted = false;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -54,61 +59,41 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Constructors
     public User() {}
 
-    public User(Long id, String email, String password, String name, String userType,
-                boolean isVerified, String verificationToken, Resume resume,
-                List<Application> applications, List<Job> postedJobs,
-                LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = id;
+    public User(String email, String password, String name, UserType userType) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.userType = userType;
-        this.isVerified = isVerified;
-        this.verificationToken = verificationToken;
-        this.resume = resume;
-        this.applications = applications;
-        this.postedJobs = postedJobs;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.isVerified = false;
+        this.profileCompleted = false;
     }
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-
-    public String getUserType() { return userType; }
-    public void setUserType(String userType) { this.userType = userType; }
-
+    public UserType getUserType() { return userType; }
+    public void setUserType(UserType userType) { this.userType = userType; }
     public boolean isVerified() { return isVerified; }
     public void setVerified(boolean verified) { isVerified = verified; }
-
     public String getVerificationToken() { return verificationToken; }
     public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
-
+    public boolean isProfileCompleted() { return profileCompleted; }
+    public void setProfileCompleted(boolean profileCompleted) { this.profileCompleted = profileCompleted; }
     public Resume getResume() { return resume; }
     public void setResume(Resume resume) { this.resume = resume; }
-
     public List<Application> getApplications() { return applications; }
     public void setApplications(List<Application> applications) { this.applications = applications; }
-
     public List<Job> getPostedJobs() { return postedJobs; }
     public void setPostedJobs(List<Job> postedJobs) { this.postedJobs = postedJobs; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
