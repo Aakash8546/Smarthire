@@ -18,8 +18,10 @@ import java.io.InputStream;
 @Service
 public class ResumeTextExtractor {
 
-    @Value("${tesseract.data.path:/opt/homebrew/share/tessdata/}")
+    @Value("${tesseract.data.path:/usr/share/tesseract-ocr/5/tessdata/}")
     private String tessDataPath;
+
+    private Boolean tesseractAvailable = null;
 
     public String extractText(MultipartFile file) throws IOException {
         String fileName = file.getOriginalFilename();
@@ -28,7 +30,10 @@ public class ResumeTextExtractor {
             throw new IOException("Invalid file name");
         }
 
+        System.out.println("========================================");
         System.out.println("Extracting from: " + fileName);
+        System.out.println("File size: " + file.getSize() + " bytes");
+        System.out.println("========================================");
 
         if (fileName.endsWith(".pdf")) {
             return extractFromPdf(file);
@@ -45,70 +50,150 @@ public class ResumeTextExtractor {
         try (InputStream inputStream = file.getInputStream();
              PDDocument document = PDDocument.load(inputStream)) {
 
-            // First try: Normal text extraction
+            System.out.println("📄 Step 1: Trying PDFBox text extraction...");
+
+            // Step 1: Try PDFBox normal text extraction
             PDFTextStripper stripper = new PDFTextStripper();
             String text = stripper.getText(document);
 
-            System.out.println("Normal PDF text extraction length: " + (text != null ? text.length() : 0));
+            int textLength = text != null ? text.trim().length() : 0;
+            System.out.println("   PDFBox extracted " + textLength + " characters");
 
-            // If text is empty or very short, PDF might be scanned
-            if (text == null || text.trim().length() < 50) {
-                System.out.println("PDF appears to be scanned. Using OCR...");
-
-                // Use OCR for scanned PDFs
-                String ocrText = extractTextWithOCR(document);
-                if (ocrText != null && !ocrText.trim().isEmpty()) {
-                    System.out.println("OCR extraction successful. Length: " + ocrText.length());
-                    return ocrText;
-                }
-
-                System.err.println("OCR extraction failed. Returning empty text.");
-                return "";
+            // Step 1 Result: If we got enough text, return it
+            if (textLength > 50) {
+                System.out.println("✅ PDFBox extraction successful! Returning text.");
+                return text;
             }
 
-            return text;
+            // Step 1 Result: Not enough text, PDF might be scanned
+            System.out.println("⚠️ PDFBox extraction failed or insufficient text.");
+            System.out.println("   This PDF appears to be scanned or image-based.");
+
+            // Step 2: Check OCR availability
+            System.out.println("\n🔍 Step 2: Checking OCR availability...");
+
+            if (isTesseractAvailable()) {
+                System.out.println("✅ OCR is available. Using Tesseract for scanned PDF...");
+                return extractTextWithOCR(document);
+            } else {
+                // Step 2 Result: OCR not available - show friendly fallback message
+                System.out.println("❌ OCR is NOT available on this server.");
+                System.out.println("   Returning friendly error message.");
+                throw new IOException(generateFriendlyFallbackMessage());
+            }
+
         } catch (Exception e) {
-            System.err.println("PDF extraction error: " + e.getMessage());
-            return "";
+            if (e.getMessage() != null && e.getMessage().contains("SCANNED_PDF")) {
+                throw e;
+            }
+            throw new IOException("Error extracting text from PDF: " + e.getMessage(), e);
         }
     }
 
     private String extractTextWithOCR(PDDocument document) {
         try {
-            // Initialize Tesseract
+            System.out.println("\n📸 Step 3: Running OCR on scanned PDF...");
+
             Tesseract tesseract = new Tesseract();
             tesseract.setDatapath(tessDataPath);
             tesseract.setLanguage("eng");
 
-            System.out.println("Tesseract data path: " + tessDataPath);
-
-            // Render PDF pages to images and run OCR
             PDFRenderer renderer = new PDFRenderer(document);
             StringBuilder fullText = new StringBuilder();
 
             int pageCount = document.getNumberOfPages();
-            System.out.println("Processing " + pageCount + " pages with OCR...");
+            System.out.println("   Total pages: " + pageCount);
 
             for (int page = 0; page < pageCount; page++) {
-                // Render page as image (300 DPI for better accuracy)
+                System.out.print("   Processing page " + (page + 1) + "... ");
                 BufferedImage image = renderer.renderImageWithDPI(page, 300);
-
-                // Run OCR on the image
                 String pageText = tesseract.doOCR(image);
                 fullText.append(pageText).append("\n");
-
-                System.out.println("Page " + (page + 1) + " OCR complete. Text length: " + pageText.length());
+                System.out.println("Extracted " + pageText.length() + " chars");
             }
 
+            System.out.println("✅ OCR extraction complete! Total text length: " + fullText.length());
             return fullText.toString();
 
         } catch (TesseractException e) {
-            System.err.println("Tesseract OCR error: " + e.getMessage());
+            System.err.println("❌ Tesseract OCR error: " + e.getMessage());
             return "";
         } catch (Exception e) {
-            System.err.println("OCR processing error: " + e.getMessage());
+            System.err.println("❌ OCR processing error: " + e.getMessage());
             return "";
         }
+    }
+
+    private boolean isTesseractAvailable() {
+        if (tesseractAvailable != null) {
+            return tesseractAvailable;
+        }
+
+        try {
+            Tesseract tesseract = new Tesseract();
+            tesseract.setDatapath(tessDataPath);
+            tesseract.setLanguage("eng");
+
+            // Simple test to check if tesseract works
+            BufferedImage testImage = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
+            tesseract.doOCR(testImage);
+
+            tesseractAvailable = true;
+            System.out.println("   ✓ Tesseract OCR is available");
+            return true;
+
+        } catch (Exception e) {
+            tesseractAvailable = false;
+            System.out.println("   ✗ Tesseract OCR is NOT available");
+            System.out.println("     Reason: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private String generateFriendlyFallbackMessage() {
+        return """
+            ╔══════════════════════════════════════════════════════════════╗
+            ║           📄 SCANNED PDF NOT SUPPORTED                        ║
+            ╚══════════════════════════════════════════════════════════════╝
+            
+            We detected that you uploaded a scanned or image-based PDF file.
+            Our server currently does not support scanned PDFs.
+            
+            🔧 **How to fix this (3 easy ways):**
+            
+            ┌─────────────────────────────────────────────────────────────┐
+            │ Method 1: Convert using Google Docs (Free & Easy)          │
+            ├─────────────────────────────────────────────────────────────┤
+            │ 1. Go to drive.google.com                                  │
+            │ 2. Upload your scanned PDF                                 │
+            │ 3. Right-click → Open with → Google Docs                   │
+            │ 4. File → Download → PDF Document (.pdf)                   │
+            │ 5. Upload the new PDF file                                 │
+            └─────────────────────────────────────────────────────────────┘
+            
+            ┌─────────────────────────────────────────────────────────────┐
+            │ Method 2: Create a text-based PDF (Recommended)            │
+            ├─────────────────────────────────────────────────────────────┤
+            │ 1. Open Microsoft Word or Google Docs                      │
+            │ 2. Type/Copy your resume content                          │
+            │ 3. File → Save As → PDF                                    │
+            │ 4. Upload the text-based PDF                               │
+            └─────────────────────────────────────────────────────────────┘
+            
+            ┌─────────────────────────────────────────────────────────────┐
+            │ Method 3: Use DOCX or TXT format                          │
+            ├─────────────────────────────────────────────────────────────┤
+            │ • DOCX (Word document) - Fully supported                   │
+            │ • TXT (Plain text) - Fully supported                       │
+            │ • Upload your resume in either format                      │
+            └─────────────────────────────────────────────────────────────┘
+            
+            💡 **Need more help?**
+            • Email: support@smarthire.com
+            • Help Center: https://smarthire.com/help
+            
+            We're here to help! ✨
+            """;
     }
 
     private String extractFromDocx(MultipartFile file) throws IOException {
@@ -117,17 +202,27 @@ public class ResumeTextExtractor {
              XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
 
             String text = extractor.getText();
-            System.out.println("DOCX text length: " + (text != null ? text.length() : 0));
-            return text != null ? text : "";
+            int textLength = text != null ? text.length() : 0;
+            System.out.println("DOCX text extraction complete. Length: " + textLength);
+
+            if (text == null || text.trim().isEmpty()) {
+                throw new IOException("Could not extract text from DOCX file. File might be corrupted or empty.");
+            }
+
+            return text;
         } catch (Exception e) {
-            System.err.println("DOCX extraction error: " + e.getMessage());
-            return "";
+            throw new IOException("Error extracting text from DOCX: " + e.getMessage(), e);
         }
     }
 
     private String extractFromTxt(MultipartFile file) throws IOException {
         String text = new String(file.getBytes());
-        System.out.println("TXT text length: " + text.length());
+        System.out.println("TXT text extraction complete. Length: " + text.length());
+
+        if (text.trim().isEmpty()) {
+            throw new IOException("TXT file is empty. Please upload a file with content.");
+        }
+
         return text;
     }
 }
