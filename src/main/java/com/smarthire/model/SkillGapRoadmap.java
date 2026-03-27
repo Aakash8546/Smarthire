@@ -1,50 +1,76 @@
 package com.smarthire.model;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "skill_gap_roadmaps")
 public class SkillGapRoadmap {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    private Long userId;
 
-    @ManyToOne
-    @JoinColumn(name = "job_id")
-    private Job job;
+    private Long jobId;
 
     @Column(columnDefinition = "TEXT")
     private String roadmap;
 
     private Integer estimatedWeeks;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
 
     public SkillGapRoadmap() {}
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public Job getJob() { return job; }
-    public void setJob(Job job) { this.job = job; }
+    public Long getUserId() {
+        return userId;
+    }
 
-    public String getRoadmap() { return roadmap; }
-    public void setRoadmap(String roadmap) { this.roadmap = roadmap; }
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
 
-    public Integer getEstimatedWeeks() { return estimatedWeeks; }
-    public void setEstimatedWeeks(Integer estimatedWeeks) { this.estimatedWeeks = estimatedWeeks; }
+    public Long getJobId() {
+        return jobId;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setJobId(Long jobId) {
+        this.jobId = jobId;
+    }
+
+    public String getRoadmap() {
+        return roadmap;
+    }
+
+    public void setRoadmap(String roadmap) {
+        this.roadmap = roadmap;
+    }
+
+    public Integer getEstimatedWeeks() {
+        return estimatedWeeks;
+    }
+
+    public void setEstimatedWeeks(Integer estimatedWeeks) {
+        this.estimatedWeeks = estimatedWeeks;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
 }

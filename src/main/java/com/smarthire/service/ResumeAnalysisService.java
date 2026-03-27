@@ -9,12 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class ResumeAnalysisService {
@@ -26,111 +23,151 @@ public class ResumeAnalysisService {
     private UserRepository userRepository;
 
     @Autowired
-    private AIService aiService;
+    private AIGeminiService aiGeminiService;
 
     @Autowired
-    private ResumeTextExtractor textExtractor;
+    private ResumeTextExtractor resumeTextExtractor;
 
-    private final String UPLOAD_DIR = "uploads/resumes/";
+    // Complete fallback skill keywords with frontend skills
+    private static final Set<String> FALLBACK_SKILL_KEYWORDS = new HashSet<>(Arrays.asList(
+            // Frontend Skills
+            "html", "html5", "css", "css3", "scss", "sass", "less", "tailwind", "bootstrap",
+            "react", "react.js", "reactjs", "angular", "vue", "vue.js", "next.js", "nuxt.js",
+            "javascript", "typescript", "jquery", "redux", "context api", "webpack", "vite",
+            "figma", "adobe xd", "jest", "cypress", "react testing library", "material-ui",
 
-    public ResumeAnalysisResponse analyzeResume(Long userId, MultipartFile file) throws IOException {
-        System.out.println("=== Analyzing Resume for User ID: " + userId);
+            // Backend Skills
+            "java", "python", "spring", "spring boot", "django", "flask", "node.js", "express",
+            "mysql", "postgresql", "mongodb", "redis", "docker", "kubernetes", "aws", "azure", "gcp",
+            "git", "jenkins", "rest api", "graphql", "microservices", "kafka", "c++", "c#", "php",
+            "ruby", "swift", "kotlin", "go", "rust", "scala", "perl", "r", "matlab", "groovy",
+            "spring cloud", "hibernate", "jpa", "oracle", "sql server", "cassandra", "firebase"
+    ));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    System.err.println("User not found with ID: " + userId);
-                    return new RuntimeException("User not found");
-                });
-
-        System.out.println("User found: " + user.getEmail());
-
-
-        Path uploadPath = Paths.get(UPLOAD_DIR);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            System.out.println("Created upload directory: " + UPLOAD_DIR);
-        }
-
-
-        String fileName = file.getOriginalFilename();
-        String uniqueFileName = UUID.randomUUID().toString() + "_" + fileName;
-        Path filePath = uploadPath.resolve(uniqueFileName);
-        Files.write(filePath, file.getBytes());
-        System.out.println("File saved: " + filePath);
-
-
-        String resumeText;
+    public ResumeAnalysisResponse analyzeResume(Long userId, MultipartFile file) {
         try {
-            resumeText = textExtractor.extractText(file);
-            System.out.println("Extracted text length: " + resumeText.length());
-            System.out.println("First 200 chars: " + resumeText.substring(0, Math.min(200, resumeText.length())));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String extractedText = resumeTextExtractor.extractText(file).toLowerCase();
+
+            // Debug: Print extracted text length
+            System.out.println("Extracted text length: " + extractedText.length());
+            System.out.println("First 500 chars: " + (extractedText.length() > 500 ? extractedText.substring(0, 500) : extractedText));
+
+            List<String> extractedSkills = new ArrayList<>();
+            int aiScore = 0;
+            List<String> skillSuggestions = new ArrayList<>();
+
+            try {
+                Map<String, Object> geminiResult = aiGeminiService.analyzeResumeWithAI(extractedText);
+                extractedSkills = (List<String>) geminiResult.getOrDefault("skills", new ArrayList<>());
+                aiScore = (int) geminiResult.getOrDefault("score", 50);
+                skillSuggestions = (List<String>) geminiResult.getOrDefault("suggestions", new ArrayList<>());
+                System.out.println("✅ AI resume analysis successful. Skills found: " + extractedSkills.size());
+            } catch (Exception e) {
+                System.err.println("❌ AI analysis failed: " + e.getMessage());
+                System.err.println("Using fallback keyword matching...");
+                extractedSkills = extractSkillsWithKeywords(extractedText);
+                aiScore = calculateScore(extractedSkills);
+                skillSuggestions = generateSuggestions(extractedSkills);
+                System.out.println("Fallback skills found: " + extractedSkills);
+            }
+
+            Resume resume = new Resume();
+            resume.setUser(user);
+            resume.setFileName(file.getOriginalFilename());
+            resume.setContent(extractedText);
+            resume.setExtractedSkills(String.join(",", extractedSkills));
+            resume.setAiScore(aiScore);
+            resume.setSkillSuggestions(String.join(",", skillSuggestions));
+            resume.setAnalysisDate(LocalDateTime.now());
+
+            Optional<Resume> existingResume = resumeRepository.findByUser(user);
+            if (existingResume.isPresent()) {
+                resume.setId(existingResume.get().getId());
+            }
+
+            resumeRepository.save(resume);
+
+            ResumeAnalysisResponse response = new ResumeAnalysisResponse();
+            response.setUserId(userId);
+            response.setFileName(file.getOriginalFilename());
+            response.setExtractedSkills(extractedSkills);
+            response.setScore(aiScore);
+            response.setSuggestions(skillSuggestions);
+            response.setAnalysisDate(LocalDateTime.now());
+
+            return response;
+
         } catch (Exception e) {
-            System.err.println("Failed to extract text: " + e.getMessage());
-            throw new IOException("Failed to extract text from resume: " + e.getMessage(), e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to analyze resume: " + e.getMessage());
+        }
+    }
+
+    private List<String> extractSkillsWithKeywords(String text) {
+        Set<String> skills = new LinkedHashSet<>();
+
+        for (String keyword : FALLBACK_SKILL_KEYWORDS) {
+            Pattern pattern = Pattern.compile("\\b" + Pattern.quote(keyword) + "\\b", Pattern.CASE_INSENSITIVE);
+            if (pattern.matcher(text).find()) {
+                skills.add(keyword);
+            }
         }
 
+        return new ArrayList<>(skills);
+    }
 
-        System.out.println("Calling AI service for analysis...");
-        ResumeAnalysisResponse analysis = aiService.analyzeResume(resumeText);
-        System.out.println("AI Analysis completed. Score: " + analysis.getScore());
-        System.out.println("Skills extracted: " + analysis.getExtractedSkills());
+    private int calculateScore(List<String> skills) {
+        if (skills.isEmpty()) return 0;
+        if (skills.size() <= 3) return 40;
+        if (skills.size() <= 5) return 55;
+        if (skills.size() <= 8) return 70;
+        if (skills.size() <= 12) return 85;
+        return 95;
+    }
 
+    private List<String> generateSuggestions(List<String> currentSkills) {
+        List<String> suggestions = new ArrayList<>();
+        Set<String> lowerSkills = new HashSet<>();
+        for (String s : currentSkills) {
+            lowerSkills.add(s.toLowerCase());
+        }
 
-        Resume resume = resumeRepository.findByUser(user).orElse(new Resume());
-        resume.setUser(user);
-        resume.setContent(resumeText.substring(0, Math.min(resumeText.length(), 10000)));
-        resume.setFilePath(filePath.toString());
-        resume.setFileName(fileName);
-        resume.setExtractedSkills(String.join(",", analysis.getExtractedSkills()));
-        resume.setAiScore(analysis.getScore());
-        resume.setSkillSuggestions(String.join("||", analysis.getSuggestions()));
-        resume.setAnalysisDate(LocalDateTime.now());
+        List<String> trendingSkills = Arrays.asList(
+                "Docker", "Kubernetes", "AWS", "Microservices",
+                "React", "TypeScript", "GraphQL", "Next.js", "Tailwind CSS"
+        );
 
-        resumeRepository.save(resume);
-        System.out.println("Resume saved to database with ID: " + resume.getId());
+        for (String skill : trendingSkills) {
+            if (!lowerSkills.contains(skill.toLowerCase()) && suggestions.size() < 5) {
+                suggestions.add(skill);
+            }
+        }
 
-        analysis.setResumeId(resume.getId());
-        analysis.setMessage("Resume analyzed successfully!");
-
-        return analysis;
+        return suggestions;
     }
 
     public ResumeAnalysisResponse getResumeAnalysis(Long userId) {
-        System.out.println("=== Getting Resume Analysis for User ID: " + userId);
-
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
-
-        System.out.println("User found: " + user.getEmail());
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Resume resume = resumeRepository.findByUser(user)
-                .orElseThrow(() -> {
-                    System.err.println("No resume found for user: " + user.getEmail());
-                    return new RuntimeException("No resume found. Please upload your resume first.");
-                });
-
-        System.out.println("Resume found with ID: " + resume.getId());
-        System.out.println("AI Score: " + resume.getAiScore());
-        System.out.println("Skills: " + resume.getSkillsList());
+                .orElseThrow(() -> new RuntimeException("Resume not found"));
 
         ResumeAnalysisResponse response = new ResumeAnalysisResponse();
-        response.setResumeId(resume.getId());
-        response.setScore(resume.getAiScore());
+        response.setUserId(userId);
+        response.setFileName(resume.getFileName());
         response.setExtractedSkills(resume.getSkillsList());
-        response.setSuggestions(resume.getSuggestionsList());
-        response.setAnalysisDate(resume.getAnalysisDate() != null ? resume.getAnalysisDate().toString() : null);
+        response.setScore(resume.getAiScore());
+        response.setSuggestions(resume.getSkillSuggestionsList());
+        response.setAnalysisDate(resume.getAnalysisDate());
 
         return response;
     }
 
     public boolean hasResume(Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            System.err.println("User not found with ID: " + userId);
-            return false;
-        }
-        boolean exists = resumeRepository.existsByUser(user);
-        System.out.println("Resume exists for user " + user.getEmail() + ": " + exists);
-        return exists;
+        return resumeRepository.existsByUserId(userId);
     }
 }

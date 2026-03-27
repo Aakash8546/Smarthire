@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,15 +30,17 @@ public class JobMatchingService {
     private AIService aiService;
 
     @Autowired
+    private AIGeminiService aiGeminiService;  // Add this
+
+    @Autowired
     private EmailService emailService;
 
     @Autowired
-    private UserService userService;  // Add this
+    private UserService userService;
 
     @Transactional
     public MatchResponse matchResumeToJob(Long userId, Long jobId) {
-        // Use UserService to get user
-        User user = userService.getUserById(userId);  // Changed this line
+        User user = userService.getUserById(userId);
 
         Resume resume = resumeRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Resume not found. Please upload your resume first."));
@@ -48,18 +51,30 @@ public class JobMatchingService {
         List<String> userSkills = resume.getSkillsList();
         List<String> jobSkills = job.getRequiredSkillsList();
 
-        // Calculate match
-        int matchPercentage = calculateMatchPercentage(userSkills, jobSkills);
-        List<String> missingSkills = findMissingSkills(userSkills, jobSkills);
-        List<String> matchingSkills = findMatchingSkills(userSkills, jobSkills);
+        int matchPercentage;
+        List<String> missingSkills;
+        List<String> matchingSkills;
+        String recommendation;
 
-        // Get AI recommendation
-        String recommendation = aiService.getMatchingRecommendation(userSkills, jobSkills, matchPercentage);
+        // Use AI for intelligent matching
+        try {
+            Map<String, Object> aiResult = aiGeminiService.calculateMatchWithAI(
+                    userSkills, jobSkills, job.getTitle(), job.getDescription()
+            );
+            matchPercentage = (int) aiResult.getOrDefault("matchPercentage", 0);
+            matchingSkills = (List<String>) aiResult.getOrDefault("matchingSkills", List.of());
+            missingSkills = (List<String>) aiResult.getOrDefault("missingSkills", List.of());
+            recommendation = (String) aiResult.getOrDefault("recommendation", "");
+        } catch (Exception e) {
+            // Fallback to keyword matching
+            matchPercentage = calculateMatchPercentage(userSkills, jobSkills);
+            missingSkills = findMissingSkills(userSkills, jobSkills);
+            matchingSkills = findMatchingSkills(userSkills, jobSkills);
+            recommendation = aiService.getMatchingRecommendation(userSkills, jobSkills, matchPercentage);
+        }
 
-        // Check if already applied
         boolean alreadyApplied = applicationRepository.existsByUserIdAndJobId(userId, jobId);
 
-        // Save application if not already applied
         if (!alreadyApplied) {
             Application application = new Application();
             application.setUser(user);
@@ -70,7 +85,6 @@ public class JobMatchingService {
             application.setStatus(ApplicationStatus.PENDING);
             applicationRepository.save(application);
 
-            // Send email notification for high match
             if (matchPercentage >= 70) {
                 emailService.sendMatchNotification(user.getEmail(), job.getTitle(), matchPercentage, user.getName());
             }
@@ -88,12 +102,6 @@ public class JobMatchingService {
 
         return response;
     }
-
-    // Remove this method since we're using UserService
-    // public User getUserById(Long userId) {
-    //     return userRepository.findById(userId)
-    //             .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-    // }
 
     private int calculateMatchPercentage(List<String> userSkills, List<String> jobSkills) {
         if (jobSkills == null || jobSkills.isEmpty()) return 0;
