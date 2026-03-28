@@ -59,7 +59,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
                 "http://localhost:3000",
+                "https://your-app.vercel.app",
                 "http://localhost:4200",
+                "http://44.201.18.73:8080",
                 "https://smarthire-wz65.onrender.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
