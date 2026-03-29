@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/websocket/ChatWebSocketHandler.java
+
 package com.smarthire.websocket;
 
 import com.smarthire.dto.MessageDTO;
