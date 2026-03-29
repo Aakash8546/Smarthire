@@ -4,44 +4,44 @@ package com.smarthire.entity;
 import lombok.Data;
 
 import javax.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "applications", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"job_id", "user_id"})
-})
+@Table(name = "resumes")
 @Data
-public class Application {
+public class Resume {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "job_id", nullable = false)
-    private Job job;
-
-    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "resume_id")
-    private Resume resume;
+    @Column(name = "file_url")
+    private String fileUrl;
 
-    private String status = "PENDING";
+    @Column(name = "parsed_text", columnDefinition = "TEXT")
+    private String parsedText;
 
-    private BigDecimal score;
+    @Column(columnDefinition = "TEXT[]")
+    private String[] skills;
 
-    @Column(name = "applied_at")
-    private LocalDateTime appliedAt;
+    @Column(name = "experience_years")
+    private BigDecimal experienceYears;
+
+    @Column(name = "education_level")
+    private String educationLevel;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        appliedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 

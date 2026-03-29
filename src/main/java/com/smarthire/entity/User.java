@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/entity/User.java
+
 package com.smarthire.entity;
 
 import lombok.Data;
