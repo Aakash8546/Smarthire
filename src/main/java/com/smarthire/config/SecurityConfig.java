@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/config/SecurityConfig.java
+
 package com.smarthire.config;
 
 import com.smarthire.security.JwtAuthenticationFilter;

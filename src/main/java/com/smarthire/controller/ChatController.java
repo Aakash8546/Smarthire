@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/controller/ChatController.java
+
 package com.smarthire.controller;
 
 import com.smarthire.entity.ChatRoom;

@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/service/MLServiceClient.java
+
 package com.smarthire.service;
 
 import com.fasterxml.jackson.databind.JsonNode;

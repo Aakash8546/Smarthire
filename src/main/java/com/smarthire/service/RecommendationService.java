@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/service/RecommendationService.java
+
 package com.smarthire.service;
 
 import com.smarthire.entity.*;

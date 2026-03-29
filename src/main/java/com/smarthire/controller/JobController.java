@@ -1,4 +1,4 @@
-// backend/src/main/java/com/smarthire/controller/JobController.java
+
 package com.smarthire.controller;
 
 import com.smarthire.dto.RankedCandidate;
