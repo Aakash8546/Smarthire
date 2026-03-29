@@ -1,79 +1,120 @@
--- schema.sql
--- This file is optional as JPA will create tables automatically with ddl-auto=update
-
--- Create database
-CREATE DATABASE IF NOT EXISTS smarthire;
+-- database/schema.sql
+-- SmartHire Database Schema
 
 -- Users table
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    user_type VARCHAR(50) NOT NULL,
-    is_verified BOOLEAN DEFAULT FALSE,
-    verification_token VARCHAR(255),
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role VARCHAR(50) NOT NULL DEFAULT 'CANDIDATE',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Jobs table
+CREATE TABLE jobs (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    requirements TEXT,
+    location VARCHAR(255),
+    salary_range VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'ACTIVE',
+    recruiter_id BIGINT REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Resumes table
-CREATE TABLE IF NOT EXISTS resumes (
+CREATE TABLE resumes (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT,
-    file_path VARCHAR(500),
-    file_name VARCHAR(255),
-    extracted_skills TEXT,
-    ai_score INT,
-    skill_suggestions TEXT,
-    analysis_date TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Jobs table
-CREATE TABLE IF NOT EXISTS jobs (
-    id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    company VARCHAR(255) NOT NULL,
-    location VARCHAR(255),
-    required_skills TEXT,
-    experience_years INT,
-    salary_range VARCHAR(100),
-    recruiter_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    file_url VARCHAR(500),
+    parsed_text TEXT,
+    skills TEXT[],
+    experience_years DECIMAL(3,1),
+    education_level VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Applications table
-CREATE TABLE IF NOT EXISTS applications (
+CREATE TABLE applications (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    job_id BIGINT REFERENCES jobs(id) ON DELETE CASCADE,
-    match_percentage INT,
-    missing_skills TEXT,
-    matching_skills TEXT,
-    application_status VARCHAR(50) DEFAULT 'PENDING',
+    job_id BIGINT NOT NULL REFERENCES jobs(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    resume_id BIGINT REFERENCES resumes(id),
+    status VARCHAR(50) DEFAULT 'PENDING',
+    score DECIMAL(5,2),
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, job_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(job_id, user_id)
 );
 
--- Skill gap roadmaps table
-CREATE TABLE IF NOT EXISTS skill_gap_roadmaps (
+-- Embeddings table for FAISS
+CREATE TABLE embeddings (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    job_id BIGINT REFERENCES jobs(id) ON DELETE CASCADE,
-    roadmap TEXT,
-    estimated_weeks INT,
+    entity_type VARCHAR(50) NOT NULL, -- 'RESUME', 'JOB', 'USER'
+    entity_id BIGINT NOT NULL,
+    embedding_vector VECTOR(768),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(entity_type, entity_id)
+);
+
+-- Recruiter feedback table
+CREATE TABLE recruiter_feedback (
+    id BIGSERIAL PRIMARY KEY,
+    application_id BIGINT NOT NULL REFERENCES applications(id),
+    recruiter_id BIGINT NOT NULL REFERENCES users(id),
+    rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+    feedback TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_token);
-CREATE INDEX IF NOT EXISTS idx_jobs_recruiter ON jobs(recruiter_id);
-CREATE INDEX IF NOT EXISTS idx_jobs_active ON jobs(is_active);
-CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id);
-CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
-CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(application_status);
+-- Recommendations cache
+CREATE TABLE recommendations_cache (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    recommendation_data JSONB NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat rooms table
+CREATE TABLE chat_rooms (
+    id BIGSERIAL PRIMARY KEY,
+    job_id BIGINT REFERENCES jobs(id),
+    candidate_id BIGINT REFERENCES users(id),
+    recruiter_id BIGINT REFERENCES users(id),
+    status VARCHAR(50) DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages table
+CREATE TABLE messages (
+    id BIGSERIAL PRIMARY KEY,
+    chat_room_id BIGINT NOT NULL REFERENCES chat_rooms(id),
+    sender_id BIGINT NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL,
+    is_spam BOOLEAN DEFAULT false,
+    is_blocked BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_jobs_status ON jobs(status);
+CREATE INDEX idx_jobs_recruiter ON jobs(recruiter_id);
+CREATE INDEX idx_applications_job ON applications(job_id);
+CREATE INDEX idx_applications_user ON applications(user_id);
+CREATE INDEX idx_applications_status ON applications(status);
+CREATE INDEX idx_resumes_user ON resumes(user_id);
+CREATE INDEX idx_chat_rooms_job ON chat_rooms(job_id);
+CREATE INDEX idx_chat_rooms_candidate ON chat_rooms(candidate_id);
+CREATE INDEX idx_messages_room ON messages(chat_room_id);
+CREATE INDEX idx_messages_created ON messages(created_at);
